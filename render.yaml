@@ -46,7 +46,7 @@ services:
     runtime: static
     # Build the board, then copy the architecture explainer into the published dir
     # so it ships as a route on the live site (/architecture → /architecture.html).
-    buildCommand: npm install && npm run build -w @flightdeck/contracts && npm run build -w @flightdeck/dashboard && cp docs/architecture.html apps/dashboard/dist/architecture.html
+    buildCommand: npm install && npm run build -w @flightdeck/contracts && npm run build -w @flightdeck/dashboard && cp docs/architecture.html apps/dashboard/dist/architecture.html && mkdir -p apps/dashboard/dist/audio && cp docs/audio/*.mp3 apps/dashboard/dist/audio/
     staticPublishPath: apps/dashboard/dist
     routes:
       # Clean URL for the architecture diagram. Render serves the real file first,

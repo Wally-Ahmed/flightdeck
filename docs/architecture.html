@@ -559,6 +559,7 @@
     </div>
     <nav class="pagenav" id="pagenav" aria-label="Pages"></nav>
     <div class="top-actions">
+      <button class="btn" id="mute-btn" aria-pressed="false" aria-label="Mute narration" title="Narration on — click to mute" style="font-size:16px;line-height:1;padding:9px 12px;">🔊</button>
       <button class="btn play" id="play-btn">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         Play walkthrough
@@ -1081,6 +1082,40 @@ var SVGNS = "http://www.w3.org/2000/svg";
 function el(tag, attrs){ var e = document.createElementNS(SVGNS, tag); if(attrs) for(var k in attrs) e.setAttribute(k, attrs[k]); return e; }
 function hel(tag, cls, txt){ var e = document.createElement(tag); if(cls) e.className = cls; if(txt!=null) e.textContent = txt; return e; }
 
+/* ================================================================
+   VOICEOVER — one shared <audio>, no overlap, mute persisted.
+   Clips live next to this file at audio/<name>.mp3 (works locally
+   AND deployed: dist/audio sits next to dist/architecture.html).
+   Audio only ever starts from a user gesture (walkthrough / a click);
+   nothing autoplays on load, per browser policy.
+   ================================================================ */
+var AUDIO_MUTED = (function(){ try { return localStorage.getItem("fd-muted") === "1"; } catch(e){ return false; } })();
+var _clip = null;        // the single reused Audio element
+function stopClip(){
+  if(_clip){ try { _clip.pause(); _clip.currentTime = 0; } catch(e){} }
+}
+function playClip(name){
+  stopClip();                          // never overlap — kill the previous one first
+  if(AUDIO_MUTED || !name) return;
+  try {
+    _clip = new Audio("audio/" + name + ".mp3");
+    _clip.play().catch(function(){});  // swallow autoplay/abort rejections
+  } catch(e){ /* no-op */ }
+}
+function syncMuteBtn(){
+  var b = $("#mute-btn"); if(!b) return;
+  b.textContent = AUDIO_MUTED ? "🔇" : "🔊";
+  b.setAttribute("aria-pressed", AUDIO_MUTED ? "true" : "false");
+  b.setAttribute("aria-label", AUDIO_MUTED ? "Unmute narration" : "Mute narration");
+  b.title = AUDIO_MUTED ? "Narration muted — click to unmute" : "Narration on — click to mute";
+}
+function toggleMute(){
+  AUDIO_MUTED = !AUDIO_MUTED;
+  try { localStorage.setItem("fd-muted", AUDIO_MUTED ? "1" : "0"); } catch(e){}
+  if(AUDIO_MUTED) stopClip();
+  syncMuteBtn();
+}
+
 /* who runs each piece — drives color + legend */
 var ACTORS = {
   ai:     { label:"AI worker",        color:"#f472b6", soft:"rgba(244,114,182,.16)" },
@@ -1156,9 +1191,11 @@ function openModal(cfg){
 
   modalBack.classList.add("show");
   modalClose.focus();
+  playClip(cfg.clip);                  // narrate this element (no-op if muted / no clip)
 }
 function closeModal(){
   modalBack.classList.remove("show");
+  stopClip();                          // popup closed → stop its narration
   if(lastFocus && lastFocus.focus) lastFocus.focus();
 }
 modalClose.addEventListener("click", closeModal);
@@ -1171,7 +1208,7 @@ var MODALS = {
     desc:"The three pieces of real work — <b>planning, coding, and testing</b> — are done by AI agents, not people. An agent reads the request, decides what to change, writes the code, and checks it. What used to take a developer days happens in minutes.",
     why:"It removes the slowest, most expensive handoffs. The same agents work day or night, never get pulled onto something else, and do every step the same careful way each time.",
     tech:{ "Plan & review":"openai.textPrompt steps built into the Superplane canvas", "Coding agent":"OpenAI SDK (Responses-API tool-use loop) in the orchestrator", "Default model":"gpt-5.2", "Tools the coder has":"read / write files, search, run the build" } },
-  "ov-checks": { title:"The checks are the real headline", kind:"The core idea", icon:"check", color:"#f59e0b", soft:"rgba(245,158,11,.16)", gate:true,
+  "ov-checks": { clip:"pop-ov-checks", title:"The checks are the real headline", kind:"The core idea", icon:"check", color:"#f59e0b", soft:"rgba(245,158,11,.16)", gate:true,
     desc:"After <b>every</b> station, a quality checkpoint asks one question: did that step actually succeed? Only a yes lets the work advance. A no stops the run on the spot.",
     why:"AI that writes code is common; AI you can <i>trust</i> to ship is not. The gate after every step is what makes the output trustworthy — a broken plan never reaches coding, broken code never reaches testing, a dead preview never reaches a human.",
     tech:{ "Enforced by":"Superplane", "Gate types":"if (condition) + http health-check", "Example rule":"$[\"Code\"].data.buildPassed == true", "On fail":"route to Stop & log; the run halts" } },
@@ -1183,38 +1220,38 @@ var MODALS = {
     desc:"A small piece of custom software sits between the two sponsors and does the heavy lifting the conductor asks for. When the canvas says \"now write the code\" or \"now deploy the preview,\" the foreman is what actually clones the project, runs the coding agent, calls the Render API, and opens the pull request — then reports back pass or fail.",
     why:"It keeps the heavy, long-running work outside the canvas, so Superplane stays the clean conductor and each result it gates is a simple yes/no.",
     tech:{ "What it is":"a TypeScript service, hosted on Render", "Endpoints":"/stages/code · /verify · /deploy · /pr", "Called by":"the canvas's http nodes", "Also serves":"the run board's /api/runs", "Talks to":"GitHub + the Render API" } },
-  "ov-coder": { title:"The coding worker (the AI agent)", kind:"The hardest part", icon:"plan", color:"#f472b6", soft:"rgba(244,114,182,.16)",
+  "ov-coder": { clip:"pop-ov-coder", title:"The coding worker (the AI agent)", kind:"The hardest part", icon:"plan", color:"#f472b6", soft:"rgba(244,114,182,.16)",
     desc:"The star employee is an <b>OpenAI coding agent</b>. It takes the plan, opens the project, writes the real code changes, and checks that the project still builds — exactly what a developer does, but automatically. This is the most impressive part of the whole line.",
     why:"Writing correct code from a plan, in a real codebase, is the genuinely hard problem. Doing it automatically — and then proving it with the gates — is the heart of the idea.",
     tech:{ "Engine":"OpenAI SDK — a Responses-API tool-use loop", "Does":"clone the fork → edit web_src/ → build → commit → push a branch", "Returns":"CodeResult{ buildPassed, summary, headSha }", "Insurance":"a canned #5368 change guarantees the line always demos" } },
 
-  "sp-conduct": { title:"Conducts the line", kind:"Superplane", icon:"save", color:"#8b5cf6", soft:"rgba(139,92,246,.16)",
+  "sp-conduct": { clip:"pop-sp-conduct", title:"Conducts the line", kind:"Superplane", icon:"save", color:"#8b5cf6", soft:"rgba(139,92,246,.16)",
     desc:"Superplane runs the stations in the correct order and carries each station's result to the next one. It keeps <b>one independent run per request</b>, so all five issues can move through the factory at the same time, and it remembers exactly where each run is.",
     why:"Someone has to own the order of operations and the state of every run. That conductor role is exactly Superplane's sweet spot — durable and restart-safe.",
     tech:{ "Defined as":"one canvas — 15 nodes / 21 edges", "Live as":"app flightdeck-factory in Superplane Cloud", "Run state":"a memory namespace, runs", "Triggered by":"the foreman's /api/trigger, or a button on the board" } },
-  "sp-gates": { title:"Enforces every check", kind:"Superplane", icon:"check", color:"#f59e0b", soft:"rgba(245,158,11,.16)", gate:true,
+  "sp-gates": { clip:"pop-sp-gates", title:"Enforces every check", kind:"Superplane", icon:"check", color:"#f59e0b", soft:"rgba(245,158,11,.16)", gate:true,
     desc:"After each step, Superplane runs a gate — a small yes/no test that confirms the previous stage really succeeded. A pass moves the work on; a fail routes it to \"Stop & log\" and the run halts. There's a gate after <b>every</b> stage.",
     why:"This is the requirement's whole spine: \"each stage validates the previous one actually worked before moving on.\" It's what turns a chain of AI steps into something safe to hand a human.",
     tech:{ "Gate components":"if (condition) and http (health-check)", "Plan gate":"$[\"Spec\"].data.text != \"\"", "Build gate":"$[\"Code\"].data.buildPassed == true", "Tests gate":"$[\"Verify\"].data.testsPassed == true", "Live gate":"http GET the preview · successCodes 200" } },
-  "sp-llm": { title:"Thinks with OpenAI", kind:"Superplane", icon:"plan", color:"#f472b6", soft:"rgba(244,114,182,.16)",
+  "sp-llm": { clip:"pop-sp-llm", title:"Thinks with OpenAI", kind:"Superplane", icon:"plan", color:"#f472b6", soft:"rgba(244,114,182,.16)",
     desc:"Two of the stations are AI steps built right into the canvas — no extra service to call. One reads the issue and writes the implementation plan; the other reviews the finished work and writes the human-readable summary that goes on the pull request.",
     why:"Keeping the thinking inside Superplane makes the pipeline self-contained: the plan and the review are first-class canvas steps the gates can check, just like any other station.",
     tech:{ "Component":"openai.textPrompt (native Superplane action)", "Model":"gpt-5.2", "Config keys":"model + input (the system instruction is folded into input)", "Output read at":"$[\"Spec\"].data.text · $[\"Review\"].data.text", "Integration":"node-level integration { id } (OpenAI)" } },
 
-  "rd-tier-light": { title:"Light tier — a static Storybook build", kind:"Render preview", icon:"globe", color:"#34d399", soft:"rgba(52,211,153,.16)",
+  "rd-tier-light": { clip:"pop-rd-light", title:"Light tier — a static Storybook build", kind:"Render preview", icon:"globe", color:"#34d399", soft:"rgba(52,211,153,.16)",
     desc:"For self-contained UI components — like the hero issue #5368 — the factory builds a <b>static Storybook site</b> of the changed component and deploys it as a Render <b>static site</b>. No backend, nothing to keep warm, just an instant public URL.",
     why:"Most UI features don't need a whole running app to review. A static site is the fastest, cheapest, most reliable way to get a clickable preview in front of a person — and it never spins down.",
     tech:{ "Build":"a static Storybook bundle (vite build)", "Deploy as":"a Render static site", "Cost shape":"no backend · no spin-down · instant URL", "Used for":"component features (#5368, #5366, parts of #5705)" } },
-  "rd-tier-heavy": { title:"Heavy tier — a full Docker web service", kind:"Render preview", icon:"globe", color:"#22d3ee", soft:"rgba(34,211,238,.16)",
+  "rd-tier-heavy": { clip:"pop-rd-heavy", title:"Heavy tier — a full Docker web service", kind:"Render preview", icon:"globe", color:"#22d3ee", soft:"rgba(34,211,238,.16)",
     desc:"For richer, end-to-end flows, the factory builds a <b>Docker image</b> of the modified app and asks the Render API to run it as a full <b>web service</b>, then reads back the live URL to put on the pull request.",
     why:"Some features only make sense as the whole running application. This tier gives a reviewer the real, full app to click through — at the cost of more build machinery than a static site.",
     tech:{ "Build":"a Docker image of the modified app", "Deploy via":"Render API · POST /v1/services (image)", "Reads back":"serviceDetails.url (the live preview URL)", "Used for":"full-flow features (#5164, #5704)" } },
 
-  "res-pr": { title:"What's a \"pull request\"?", kind:"Plain English", icon:"pr", color:"#8b5cf6", soft:"rgba(139,92,246,.16)",
+  "res-pr": { clip:"pop-res-pr", title:"What's a \"pull request\"?", kind:"Plain English", icon:"pr", color:"#8b5cf6", soft:"rgba(139,92,246,.16)",
     desc:"A pull request is just the <b>standard, polite way a developer proposes a change</b>: \"here's exactly what I changed, here's why — please look before it goes in.\" Nothing happens to the real project until a human approves and merges it.",
     why:"It's the format every reviewer already expects, which means Flightdeck's output drops straight into a normal review workflow — no new tool to learn.",
     tech:{ "Opened on":"a fork of superplanehq/superplane", "Real example":"Wally-Ahmed/superplane PR #1", "Carries":"the AI's review summary + a commented preview link", "Opened by":"the foreman via the GitHub API" } },
-  "res-preview": { title:"What's a \"preview environment\"?", kind:"Plain English", icon:"globe", color:"#34d399", soft:"rgba(52,211,153,.16)",
+  "res-preview": { clip:"pop-res-preview", title:"What's a \"preview environment\"?", kind:"Plain English", icon:"globe", color:"#34d399", soft:"rgba(52,211,153,.16)",
     desc:"A preview environment is a <b>temporary, live copy of the feature you can click and try</b> — its own web address on Render, completely separate from anything real. Like a test-drive car on the lot: fully functional, but safe to poke at, and disposable when you're done.",
     why:"It turns \"trust me, it works\" into \"see for yourself.\" A reviewer forms an opinion by using the feature, in seconds — which is the entire point of the deliverable.",
     tech:{ "Hosted on":"Render", "Created at":"the Deploy stage, via the Render API", "Light tier":"static Storybook site", "Heavy tier":"Docker-image web service", "Confirmed by":"a health-check gate before the link is posted" } }
@@ -1468,10 +1505,17 @@ gToken.appendChild(token);
 var stnEls = $$(".stn", svg);
 var selectedId = null;
 
+/* node id → narration clip. The 5 stage nodes each get their own;
+   all gates share one checkpoint clip; intake/terminals stay silent. */
+var STATION_CLIPS = {
+  "spec":"pop-node-spec", "code":"pop-node-code", "verify":"pop-node-verify",
+  "deploy":"pop-node-deploy", "open-pr":"pop-node-pr"
+};
 function stationModalCfg(id){
   var s = byId[id], a = ACTORS[s.actor];
   var kind = (s.step!=null ? ("Station "+s.step) : (s.kind==="gate" ? "Checkpoint" : (s.kind==="end" ? "Terminal" : "Stage")));
-  return { title: s.name, kind: kind + " · " + a.label, icon: s.icon || (s.kind==="gate"?"check":"save"),
+  var clip = STATION_CLIPS[id] || (s.kind==="gate" ? "pop-node-gate" : null);
+  return { clip: clip, title: s.name, kind: kind + " · " + a.label, icon: s.icon || (s.kind==="gate"?"check":"save"),
     color: a.color, soft: a.soft, gate: s.kind==="gate", desc: s.plain, why: s.why, tech: s.tech };
 }
 function selectStation(id){
@@ -1757,21 +1801,21 @@ window.addEventListener("resize", onScroll); onScroll();
 
 /* ================= guided walkthrough ================= */
 var WT = [
-  { page:"overview", sec:"hero", title:"What Flightdeck is", focus:null,
+  { clip:"walk-01-intro", page:"overview", sec:"hero", title:"What Flightdeck is", focus:null,
     narr:"In one sentence: <b>you drop in a feature request, and a team of AI workers plans it, builds it, tests it, deploys a live preview, and proposes the change — checking its work after every single step.</b> Two sponsors make it run: <b>Superplane</b> conducts the line, <b>Render</b> serves the preview. Let's walk the factory floor." },
-  { page:"overview", sec:"problem", title:"The problem it solves", focus:null,
+  { clip:"walk-02-problem", page:"overview", sec:"problem", title:"The problem it solves", focus:null,
     narr:"Today, turning a request into shipped software is slow and manual: someone plans, someone codes, someone tests, someone sets up a place to try it — and a mistake at any handoff can slip through. Flightdeck <b>automates the whole line and inspects every step</b>." },
-  { page:"overview", sec:"idea", title:"The big idea: an assembly line", focus:null,
+  { clip:"walk-03-assembly", page:"overview", sec:"idea", title:"The big idea: an assembly line", focus:null,
     narr:"Picture a car factory: parts in one end, a finished, inspected car out the other. Flightdeck is that, for software. Each station does one job, and a <b>quality checkpoint ◆ signs off before the work moves on</b>. Watch the checkpoints light up green." },
-  { page:"pipeline", sec:null, title:"Plan it → is the plan real?", focus:"spec",
+  { clip:"walk-04-plan", page:"pipeline", sec:null, title:"Plan it → is the plan real?", focus:"spec",
     narr:"On the live canvas: a request enters at <b>Intake</b>. The first worker, <b>Plan it</b>, is an <b>OpenAI</b> step that reads the request and writes a concrete plan. Then the first checkpoint asks: <b>did we actually get a plan?</b> Click any node for its exact detail." },
-  { page:"pipeline", sec:null, title:"Build it → does it build?", focus:"code",
+  { clip:"walk-05-build", page:"pipeline", sec:null, title:"Build it → does it build?", focus:"code",
     narr:"<b>Build it</b> is the star: an <b>OpenAI coding agent</b> opens the project and writes the real code. Immediately after, the checkpoint asks <b>'does it build?'</b> — code that won't even build never advances. This is the hardest, most impressive part." },
-  { page:"pipeline", sec:null, title:"Test it → does it work?", focus:"verify",
+  { clip:"walk-06-test", page:"pipeline", sec:null, title:"Test it → does it work?", focus:"verify",
     narr:"<b>Test it</b> runs the project's tests to prove the feature behaves correctly — because 'it builds' isn't 'it works.' The checkpoint <b>'works?'</b> only lets a genuinely-working change continue toward a preview." },
-  { page:"render", sec:null, title:"Render ships the preview", focus:null,
+  { clip:"walk-07-render", page:"render", sec:null, title:"Render ships the preview", focus:null,
     narr:"Now <b>Render's</b> starring role: it puts the tested version online as a temporary, clickable copy — its own web address — and the factory <b>actually visits it</b> to confirm it's alive. <b>Render is where every result turns into something a human can click and try.</b>" },
-  { page:"result", sec:"result-inner", title:"What you get", focus:null,
+  { clip:"walk-08-payoff", page:"result", sec:"result-inner", title:"What you get", focus:null,
     narr:"The payoff: a <b>pull request</b> opens automatically, with a <b>green button to the live Render preview</b>. This was proven on five real requests — #5368 went all the way to a real shipped PR, with the canvas live in Superplane Cloud. That's the factory." }
 ];
 var wt = $("#wt"), wtStep = $("#wt-step"), wtTitle = $("#wt-title"), wtNarr = $("#wt-narr"),
@@ -1782,6 +1826,7 @@ var wtIdx = 0, wtTimer = null, wtOpen = false;
 
 function wtRender(){
   var s = WT[wtIdx];
+  playClip(s.clip);                    // narrate this step (flows across the whole tour)
   wtStep.textContent = "Step "+(wtIdx+1)+" / "+WT.length;
   wtTitle.textContent = s.title;
   wtNarr.innerHTML = s.narr;
@@ -1804,13 +1849,17 @@ function wtScheduleAuto(){
   }
 }
 function wtShow(){ wtOpen = true; wt.classList.add("show"); wtIdx = 0; wtRender(); wtScheduleAuto(); }
-function wtHide(){ wtOpen = false; wt.classList.remove("show"); if(wtTimer){ clearTimeout(wtTimer); wtTimer=null; } }
+function wtHide(){ wtOpen = false; wt.classList.remove("show"); stopClip(); if(wtTimer){ clearTimeout(wtTimer); wtTimer=null; } }
 wtNext.addEventListener("click", function(){ if(wtIdx < WT.length-1){ wtIdx++; wtRender(); wtScheduleAuto(); } else { wtHide(); } });
 wtPrev.addEventListener("click", function(){ if(wtIdx>0){ wtIdx--; wtRender(); wtScheduleAuto(); } });
 wtClose.addEventListener("click", wtHide);
 wtAuto.addEventListener("change", wtScheduleAuto);
 $("#play-btn").addEventListener("click", wtShow);
 $("#hero-play").addEventListener("click", wtShow);
+
+/* mute toggle — reflects persisted state on load, flips + persists on click */
+syncMuteBtn();
+$("#mute-btn").addEventListener("click", toggleMute);
 
 document.addEventListener("keydown", function(e){
   if(!wtOpen) return;
