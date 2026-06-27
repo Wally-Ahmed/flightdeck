@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme harvested from the shadcn scaffold (dark deck), with success/warning
+   tokens kept for gate pass/fail. Trading-specific utilities were stripped. */
+@layer base {
+  :root {
+    --background: 220 20% 4%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 18% 7%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 18% 9%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 250 80% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 16% 12%;
+    --secondary-foreground: 210 20% 80%;
+
+    --muted: 225 14% 14%;
+    --muted-foreground: 220 12% 50%;
+
+    --accent: 170 75% 45%;
+    --accent-foreground: 220 20% 4%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 220 20% 4%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 4%;
+
+    --border: 220 14% 16%;
+    --input: 220 14% 16%;
+    --ring: 250 80% 60%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg;
+  }
+  .glow-success {
+    box-shadow: 0 0 20px hsl(142 71% 45% / 0.15);
+  }
+  .glow-fail {
+    box-shadow: 0 0 20px hsl(0 72% 51% / 0.15);
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(220 14% 16%) transparent;
+  }
+}

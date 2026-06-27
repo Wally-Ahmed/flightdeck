@@ -1,0 +1,22 @@
+{
+  "name": "flightdeck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Flightdeck — an autonomous software factory: issue in, gated spec/code/verify pipeline, Render preview + PR out. Orchestrated by Superplane.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:contracts": "npm run build --workspace @flightdeck/contracts",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

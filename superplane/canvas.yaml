@@ -1,0 +1,278 @@
+# Flightdeck factory canvas — the staged software-factory pipeline.
+#
+# Ingest → Spec → ⟨gate⟩ → Code → ⟨build gate⟩ → Verify → ⟨gate⟩ → Review
+#   → Deploy preview → ⟨live gate⟩ → Open PR + link, with a VALIDATION GATE after
+#   every stage (the core requirement: each stage proves the previous one worked).
+#
+# Division of labour: Superplane runs the native LLM steps (openai.textPrompt for
+# Spec + Review) and every gate; the heavy/side-effectful stages (Code, Verify,
+# Deploy, PR) are `http` calls to our orchestrator, which hosts the coding agent,
+# builds the preview, calls the Render API, and opens the PR.
+#
+# Schema VERIFIED against superplanehq/superplane source (the clone at /tmp/sp-upstream),
+# including `openai.textPrompt`. Reconciled 2026-06-27 against
+# pkg/integrations/openai/{text_prompt.go,openai.go,client.go,example_output_text_prompt.json},
+# pkg/core/action.go (DefaultOutputChannel) and protos/components.proto (Node/Edge).
+# No live token was available (SUPERPLANE_API_TOKEN/CANVAS_ID are REPLACE_ME), so this
+# was reconciled against source, equivalent to `superplane index actions --name
+# openai.textPrompt`. Ground truth applied:
+#   • openai.textPrompt config keys: EXACTLY `model` + `input` (CreateResponseSpec =
+#     {Model, Input}). There is NO systemMessage, NO maxTokens, NO temperature, NO
+#     `prompt`, NO `files`, and NO `integration` config key. Unlike Claude (which had
+#     model/prompt/systemMessage/maxTokens/temperature/files), the system instruction
+#     must be FOLDED INTO `input` — there is no separate system field. The strict
+#     canvas decoder would reject any of the dropped keys.
+#   • `model` is a FieldTypeIntegrationResource (resource type "model") but a literal
+#     string (e.g. `gpt-5.2`) is the correct YAML value — Setup() only checks non-empty;
+#     it is NOT wrapped as a resource object. Default per the integration is `gpt-5.2`.
+#   • integration is bound at the NODE level (proto Node.integration =
+#     IntegrationRef{id?,name?}), NOT inside configuration. IMPORTANT: although the
+#     proto/YAML accepts `name`, the server's import-time validateIntegration
+#     (pkg/grpc/actions/canvases/serialization.go) REQUIRES `integration.id` (a
+#     UUID) for any dotted component (openai.textPrompt) and does NOT resolve by
+#     name — a name-only ref is rejected with "integration is required". So before
+#     `apps canvas update`, the `{ id: ${OPENAI_INTEGRATION_ID} }` token must resolve
+#     to a real UUID (get it from `superplane integrations list` once an OpenAI
+#     integration with an apiKey exists in the org).
+#   • openai.textPrompt output payload: $node.data.text (the generated string); also
+#     .data.id/.data.model/.data.usage/.data.response. There is NO `.message`. The
+#     `text` field name is IDENTICAL to Claude's payload, so every downstream
+#     `.data.text` reference (gate-spec, the Code node JSON, the Review prompt,
+#     open-pr) is unchanged. The emitted event type is `openai.response`.
+#   • openai.textPrompt emits ONLY the DefaultOutputChannel, whose Name is "default".
+#     It has no `success`/`failed` channels — a runtime LLM error fails the run; the
+#     gate node after each LLM step validates that the output is non-empty.
+#   • The canvas YAML decoder is STRICT (rejects unknown node fields).
+# WIRING (Phase 2): the placeholders below are now ${ENV} tokens, substituted by
+# `superplane/render-canvas.sh` into `canvas.generated.yaml` (gitignored) right
+# before the push. Set, in the environment:
+#   ORCH_URL              — deployed orchestrator base (e.g. https://flightdeck-orchestrator.onrender.com)
+#   SUPERPLANE_CANVAS_ID  — metadata.id of the created canvas (from `superplane apps canvas get`)
+#   OPENAI_INTEGRATION_ID — UUID of an OpenAI integration in the org (from `superplane integrations list`)
+# Then: `./superplane/render-canvas.sh && superplane apps canvas update -f superplane/canvas.generated.yaml`.
+#
+# Trigger one run per issue (from the orchestrator):
+#   POST $SUPERPLANE_URL/api/v1/canvases/$CANVAS_ID/triggers/ingest/hooks/run
+#   body: { "parameters": { "template": "run", "issueNumber": 5368, "issueTitle": "...", "issueBody": "...", "fork": "you/superplane", "branch": "flightdeck/issue-5368" } }
+
+apiVersion: v1
+kind: Canvas
+metadata:
+  id: ${CANVAS_ID}                       # the pushed canvas's metadata.id — substituted by render-canvas.sh from $SUPERPLANE_CANVAS_ID
+  name: Flightdeck Factory
+
+spec:
+  nodes:
+    - id: ingest
+      name: Ingest
+      type: TYPE_TRIGGER
+      component: start
+      position: { x: 0, "y": 0 }
+      configuration:
+        templates:
+          - name: run
+            parameters:
+              - { name: issueNumber, type: number }
+              - { name: issueTitle, type: string }
+              - { name: issueBody, type: string }
+              - { name: fork, type: string }
+              - { name: branch, type: string }
+            payload: |
+              {
+                "issueNumber": {{ parameters.issueNumber }},
+                "issueTitle": "{{ parameters.issueTitle }}",
+                "issueBody": "{{ parameters.issueBody }}",
+                "fork": "{{ parameters.fork }}",
+                "branch": "{{ parameters.branch }}"
+              }
+
+    # ── SPEC (native LLM) ─────────────────────────────────────────────────────
+    - id: spec
+      name: Spec
+      type: TYPE_ACTION
+      component: openai.textPrompt
+      position: { x: 320, "y": 0 }
+      integration: { id: ${OPENAI_INTEGRATION_ID} }   # import requires a UUID (validateIntegration rejects name-only); substituted by render-canvas.sh from $OPENAI_INTEGRATION_ID (get it via `superplane integrations list` once an OpenAI integration exists)
+      configuration:
+        model: gpt-5.2                                 # integration default; FieldTypeIntegrationResource but a literal string validates
+        # openai.textPrompt has no systemMessage/maxTokens — the system instruction is folded into `input`.
+        input: 'You are a senior frontend engineer. Turn a GitHub issue into a concrete implementation spec: files to touch, the approach, acceptance criteria, and whether a Storybook static build or a full Docker image is the right preview. Be specific and buildable.\n\nIssue #{{ $["Ingest"].data.issueNumber }}: {{ $["Ingest"].data.issueTitle }}\n\n{{ $["Ingest"].data.issueBody }}'
+
+    - id: gate-spec
+      name: Gate · Spec produced
+      type: TYPE_ACTION
+      component: if
+      position: { x: 640, "y": 0 }
+      configuration:
+        expression: $["Spec"].data.text != ""         # openai output: payload.text (verified vs pkg/integrations/openai/text_prompt.go ResponsePayload.Text)
+
+    # ── CODE (orchestrator hosts the coding agent) ────────────────────────────
+    - id: code
+      name: Code
+      type: TYPE_ACTION
+      component: http
+      position: { x: 960, "y": 0 }
+      configuration:
+        method: POST
+        url: '${ORCH_URL}/stages/code'                 # substituted by render-canvas.sh from $ORCH_URL (the deployed orchestrator base, e.g. https://flightdeck-orchestrator.onrender.com)
+        contentType: application/json
+        json:
+          issueNumber: '{{ $["Ingest"].data.issueNumber }}'
+          fork: '{{ $["Ingest"].data.fork }}'
+          branch: '{{ $["Ingest"].data.branch }}'
+          spec: '{{ $["Spec"].data.text }}'
+        timeoutSeconds: 30                            # long sync call; async-poll or a runner job is the production pattern
+        successCodes: '200'                            # http successCodes is a String field (comma-separated codes, e.g. "200,2xx"); a YAML array fails import validation ("must be a string")
+      # Aspirational: swap this node for a Superplane `runner` Docker job (Cloud) that
+      # runs the coding agent in-canvas — if your Cloud account exposes managed runners.
+
+    - id: gate-build
+      name: Gate · Build passed
+      type: TYPE_ACTION
+      component: if
+      position: { x: 1280, "y": 0 }
+      configuration:
+        expression: $["Code"].data.buildPassed == true
+
+    # ── VERIFY (orchestrator runs tests/storybook build) ──────────────────────
+    - id: verify
+      name: Verify
+      type: TYPE_ACTION
+      component: http
+      position: { x: 1600, "y": 0 }
+      configuration:
+        method: POST
+        url: '${ORCH_URL}/stages/verify'
+        contentType: application/json
+        json:
+          branch: '{{ $["Ingest"].data.branch }}'
+          issueNumber: '{{ $["Ingest"].data.issueNumber }}'
+        timeoutSeconds: 30
+        successCodes: '200'                            # http successCodes is a String field (comma-separated codes, e.g. "200,2xx"); a YAML array fails import validation ("must be a string")
+
+    - id: gate-verify
+      name: Gate · Tests passed
+      type: TYPE_ACTION
+      component: if
+      position: { x: 1920, "y": 0 }
+      configuration:
+        expression: $["Verify"].data.testsPassed == true
+
+    # ── REVIEW (native LLM judge; notes go into the PR) ───────────────────────
+    - id: review
+      name: Review
+      type: TYPE_ACTION
+      component: openai.textPrompt
+      position: { x: 2240, "y": 0 }
+      integration: { id: ${OPENAI_INTEGRATION_ID} }   # import requires a UUID (validateIntegration rejects name-only); substituted by render-canvas.sh from $OPENAI_INTEGRATION_ID (get it via `superplane integrations list` once an OpenAI integration exists)
+      configuration:
+        model: gpt-5.2                                 # integration default; FieldTypeIntegrationResource but a literal string validates
+        # openai.textPrompt has no systemMessage/maxTokens — the system instruction is folded into `input`.
+        input: 'You are reviewing an agent-implemented change against its spec. Summarise what was done and whether it meets the acceptance criteria, in a few sentences for the PR description.\n\nSpec:\n{{ $["Spec"].data.text }}\n\nImplementation summary:\n{{ $["Code"].data.summary }}'
+
+    # ── DEPLOY preview (orchestrator builds + calls Render API) ────────────────
+    - id: deploy
+      name: Deploy Preview
+      type: TYPE_ACTION
+      component: http
+      position: { x: 2560, "y": 0 }
+      configuration:
+        method: POST
+        url: '${ORCH_URL}/stages/deploy'
+        contentType: application/json
+        json:
+          branch: '{{ $["Ingest"].data.branch }}'
+          issueNumber: '{{ $["Ingest"].data.issueNumber }}'
+        timeoutSeconds: 30
+        successCodes: '200'                            # http successCodes is a String field (comma-separated codes, e.g. "200,2xx"); a YAML array fails import validation ("must be a string")
+
+    - id: gate-live
+      name: Gate · Preview is live
+      type: TYPE_ACTION
+      component: http
+      position: { x: 2880, "y": 0 }
+      configuration:
+        method: GET
+        url: '{{ $["Deploy Preview"].data.previewUrl }}'
+        successCodes: '200'                            # http successCodes is a String field (comma-separated codes, e.g. "200,2xx"); a YAML array fails import validation ("must be a string")
+
+    # ── OPEN PR + comment the preview link ────────────────────────────────────
+    - id: open-pr
+      name: Open PR
+      type: TYPE_ACTION
+      component: http
+      position: { x: 3200, "y": 0 }
+      configuration:
+        method: POST
+        url: '${ORCH_URL}/stages/pr'
+        contentType: application/json
+        json:
+          issueNumber: '{{ $["Ingest"].data.issueNumber }}'
+          branch: '{{ $["Ingest"].data.branch }}'
+          previewUrl: '{{ $["Deploy Preview"].data.previewUrl }}'
+          reviewNotes: '{{ $["Review"].data.text }}'
+        timeoutSeconds: 30
+        successCodes: '200'                            # http successCodes is a String field (comma-separated codes, e.g. "200,2xx"); a YAML array fails import validation ("must be a string")
+
+    # ── Record run state for the board (memory) ───────────────────────────────
+    - id: record
+      name: Record Success
+      type: TYPE_ACTION
+      component: upsertMemory
+      position: { x: 3520, "y": -120 }
+      configuration:
+        namespace: runs
+        matchList:
+          - { name: issueNumber, value: '{{ $["Ingest"].data.issueNumber }}' }
+        valueList:
+          - { name: status, value: success }
+          - { name: stage, value: done }
+          - { name: prUrl, value: '{{ $["Open PR"].data.prUrl }}' }
+          - { name: previewUrl, value: '{{ $["Deploy Preview"].data.previewUrl }}' }
+
+    - id: record-failed
+      name: Record Failure
+      type: TYPE_ACTION
+      component: upsertMemory
+      position: { x: 1920, "y": 260 }
+      configuration:
+        namespace: runs
+        matchList:
+          - { name: issueNumber, value: '{{ $["Ingest"].data.issueNumber }}' }
+        valueList:
+          - { name: status, value: failed }
+
+    - id: done
+      name: Shipped
+      type: TYPE_ACTION
+      component: noop
+      position: { x: 3840, "y": -120 }
+    - id: done-failed
+      name: Stopped
+      type: TYPE_ACTION
+      component: noop
+      position: { x: 2240, "y": 260 }
+
+  # ── Wiring — a gate after every stage; all failures route to Record Failure ──
+  edges:
+    - { sourceId: ingest,      targetId: spec,          channel: default }
+    - { sourceId: spec,        targetId: gate-spec,     channel: default }    # openai.textPrompt emits only the "default" channel
+    - { sourceId: gate-spec,   targetId: code,          channel: "true" }
+    - { sourceId: gate-spec,   targetId: record-failed, channel: "false" }
+    - { sourceId: code,        targetId: gate-build,    channel: success }
+    - { sourceId: code,        targetId: record-failed, channel: failure }   # http → failure
+    - { sourceId: gate-build,  targetId: verify,        channel: "true" }
+    - { sourceId: gate-build,  targetId: record-failed, channel: "false" }
+    - { sourceId: verify,      targetId: gate-verify,   channel: success }
+    - { sourceId: verify,      targetId: record-failed, channel: failure }
+    - { sourceId: gate-verify, targetId: review,        channel: "true" }
+    - { sourceId: gate-verify, targetId: record-failed, channel: "false" }
+    - { sourceId: review,      targetId: deploy,        channel: default }    # openai.textPrompt emits only the "default" channel
+    - { sourceId: deploy,      targetId: gate-live,     channel: success }
+    - { sourceId: deploy,      targetId: record-failed, channel: failure }
+    - { sourceId: gate-live,   targetId: open-pr,       channel: success }
+    - { sourceId: gate-live,   targetId: record-failed, channel: failure }
+    - { sourceId: open-pr,     targetId: record,        channel: success }
+    - { sourceId: open-pr,     targetId: record-failed, channel: failure }
+    - { sourceId: record,      targetId: done,          channel: default }
+    - { sourceId: record-failed, targetId: done-failed, channel: default }

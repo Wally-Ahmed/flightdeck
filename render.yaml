@@ -1,0 +1,70 @@
+# Render Blueprint — the Render half of Flightdeck, as code.
+# Built from the repo ROOT so npm workspaces can resolve @flightdeck/contracts
+# (a per-app rootDir + `npm install` can't see the sibling workspace package).
+#
+# flightdeck-orchestrator: ingests the issue, hosts the OpenAI coding agent, exposes
+#   the /stages/* endpoints the Superplane canvas calls, manages fork/branch/PR, calls
+#   the Render API to deploy previews, serves the run-board API.
+# flightdeck-board: the run board — a React/Vite static site (mock data by default).
+# Postgres: run-state persistence (mirrors the Superplane `runs` memory namespace).
+#
+# Per-issue PREVIEW environments are created at runtime by the orchestrator via the
+# Render API (POST /v1/services), so they're intentionally not declared here.
+
+services:
+  - type: web
+    name: flightdeck-orchestrator
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build -w @flightdeck/contracts && npm run build -w @flightdeck/orchestrator
+    startCommand: npm start -w @flightdeck/orchestrator
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: OPENAI_API_KEY         # OpenAI coding agent + spec/verify LLM
+        sync: false                 # set in the Render dashboard / via API, never committed
+      - key: GITHUB_TOKEN           # repo scope: clone fork, push branch, open PR + comment
+        sync: false
+      - key: GITHUB_REPO            # the fork, owner/repo
+        sync: false
+      - key: RENDER_API_KEY         # deploy per-issue previews (Render API)
+        sync: false
+      - key: RENDER_OWNER_ID
+        sync: false
+      - key: SUPERPLANE_URL
+        sync: false
+      - key: SUPERPLANE_API_TOKEN
+        sync: false
+      - key: SUPERPLANE_CANVAS_ID   # the live canvas id
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase: { name: flightdeck-db, property: connectionString }
+
+  - type: web
+    name: flightdeck-board
+    runtime: static
+    # Build the board, then copy the architecture explainer into the published dir
+    # so it ships as a route on the live site (/architecture → /architecture.html).
+    buildCommand: npm install && npm run build -w @flightdeck/contracts && npm run build -w @flightdeck/dashboard && cp docs/architecture.html apps/dashboard/dist/architecture.html
+    staticPublishPath: apps/dashboard/dist
+    routes:
+      # Clean URL for the architecture diagram. Render serves the real file first,
+      # so this just gives /architecture (no .html); the SPA catch-all handles the rest.
+      - type: rewrite
+        source: /architecture
+        destination: /architecture.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_USE_MOCK          # true = self-contained demo board; flip to false + set VITE_API_URL for live
+        value: "true"
+      - key: VITE_API_URL
+        sync: false
+
+databases:
+  - name: flightdeck-db
+    plan: free

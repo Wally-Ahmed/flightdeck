@@ -1,0 +1,5 @@
+# Rendered canvas/console — produced by render-canvas.sh with real ORCH_URL +
+# canvas/integration UUIDs substituted in. Never commit (they carry environment
+# ids); canvas.yaml / console.yaml are the committed templates.
+canvas.generated.yaml
+console.generated.yaml

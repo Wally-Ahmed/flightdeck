@@ -1,0 +1,98 @@
+# Flightdeck factory — Console (the native run board).
+#
+# This is Superplane's built-in run board: a Console panel set reading the
+# `runs` memory namespace that canvas.yaml writes (Record Success / Record
+# Failure → upsertMemory namespace: runs). It mirrors the custom React board
+# (apps/dashboard) so the demo degrades to console-only if the board is down.
+#
+# One memory row per issue, keyed by issueNumber, with fields written by the
+# canvas: status (success|failed), stage (done|…), prUrl, previewUrl. The
+# table renders one row per issue and colours it by status; the number panel
+# counts how many factory runs have been recorded.
+#
+# Schema VERIFIED 2026-06-27 against superplanehq/superplane source (clone at
+# /tmp/sp-upstream): pkg/models/console_yml.go (validator) + console.go
+# (ConsolePanel{id,type,content}/ConsoleLayoutItem{i,x,y,w,h,minW,minH}),
+# protos/canvases.proto (Console.Panel/LayoutItem), and the frontend source of
+# truth web_src/src/pages/app/console/{panelTypes.ts,consoleYaml.spec.ts}. No
+# live token was available (SUPERPLANE_API_TOKEN/CANVAS_ID are REPLACE_ME), so
+# this was authored against source rather than a live `superplane apps console
+# get` export. Ground truth applied:
+#   • apiVersion: v1, kind: Console (legacy "Dashboard" kind is rejected).
+#   • Top-level YAML decoding is STRICT (unknown fields rejected); metadata is
+#     informational only (canvasId ignored on import, name display-only).
+#   • Panel = { id, type, content }; allowed types: markdown, html, node,
+#     nodes, table, chart, number.
+#   • table content: dataSource {kind: memory, namespace, fieldPath?} +
+#     render {kind: table, columns:[{field,...}], where?, sort?{field,order},
+#     rowStyles?[{field,op,value?,tone}], rowActions?}. Column `field` is
+#     required; `label`/`format` are accepted (format e.g. status, datetime).
+#   • number content (single-source): dataSource {kind: memory, namespace,
+#     fieldPath?} + render {kind: number, aggregation:
+#     count|sum|avg|min|max|first|last, field (required unless count),
+#     prefix?, suffix?, label?}. A number's memory source has NO per-panel
+#     filter, so it counts the whole namespace — status emphasis lives in the
+#     table's rowStyles, not in separate filtered counters.
+#   • rowStyles/where ops: eq|neq|contains|not_contains|gt|lt|exists|not_exists.
+#     rowStyle tones: dimmed, yellow(-soft), orange(-soft), red(-soft),
+#     blue(-soft), green(-soft).
+#   • layout item must reference an existing panel id (i), positive w/h.
+#
+# Apply:  superplane apps console set -f superplane/console.yaml   (after connect + apps create)
+
+apiVersion: v1
+kind: Console
+metadata:
+  # canvasId is informational on import; set it to the same app id as canvas.yaml for clarity.
+  canvasId: REPLACE_WITH_APP_ID
+  name: Flightdeck Factory — Run Board
+
+spec:
+  panels:
+    # ── Title + legend (markdown) ─────────────────────────────────────────────
+    - id: board-title
+      type: markdown
+      content:
+        title: Flightdeck Factory — Run Board
+        body: |
+          Each row is one GitHub issue moving through the gated factory pipeline
+          (**Spec → Code → Verify → Review → Deploy → PR**, a validation gate after
+          every stage). Rows are read live from the `runs` memory namespace the
+          canvas writes.
+
+          **Status:** 🟢 `success` shipped · 🔴 `failed` stopped at a gate · runs in
+          flight show their current `stage`.
+
+    # ── Total runs recorded (number, counts the `runs` namespace) ─────────────
+    - id: stat-total
+      type: number
+      content:
+        dataSource: { kind: memory, namespace: runs }
+        render:
+          kind: number
+          aggregation: count
+          label: Issues in the factory
+
+    # ── The run board itself (table, one row per issue) ───────────────────────
+    - id: run-board
+      type: table
+      content:
+        dataSource: { kind: memory, namespace: runs }
+        render:
+          kind: table
+          columns:
+            - { field: issueNumber, label: Issue }
+            - { field: stage,       label: Stage }
+            - { field: status,      label: Status, format: status }
+            - { field: prUrl,       label: PR,      format: link }
+            - { field: previewUrl,  label: Preview, format: link }
+          sort: { field: issueNumber, order: asc }
+          rowStyles:
+            - { field: status, op: eq, value: success, tone: green-soft }
+            - { field: status, op: eq, value: failed,  tone: red-soft }
+
+  # ── Layout (12-col grid): title across the top, stat left, board right ──────
+  layout:
+    - { i: board-title, x: 0, y: 0,  w: 12, h: 3 }
+    - { i: stat-total,  x: 0, y: 3,  w: 3,  h: 4 }
+    - { i: run-board,   x: 3, y: 3,  w: 9,  h: 10 }
