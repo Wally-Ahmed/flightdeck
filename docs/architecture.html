@@ -517,19 +517,33 @@
   .wt-top .x:hover { color: var(--text); border-color: #33486c; }
   .wt-narr { color: var(--text-dim); font-size: 14.5px; line-height: 1.55; margin: 0 0 14px; }
   .wt-narr b { color: var(--text); font-weight: 650; }
-  .wt-foot { display: flex; align-items: center; gap: 10px; }
-  .wt-prog { flex: 1; display: flex; gap: 5px; }
+  .wt-prog { display: flex; gap: 5px; margin-bottom: 12px; }
   .wt-prog i { height: 5px; flex: 1; border-radius: 3px; background: var(--line); transition: .25s; }
   .wt-prog i.done { background: linear-gradient(90deg, var(--orch), var(--render)); }
   .wt-prog i.cur { background: var(--orch); box-shadow: 0 0 10px rgba(34,211,238,.7); }
-  .wt-nav { display: flex; gap: 8px; }
-  .wt-nav .b { appearance: none; cursor: pointer; font: 700 12.5px/1 var(--sans); border: 1px solid var(--line); background: var(--panel);
+  /* scrubber (rewind / fast-forward) */
+  .wt-scrubrow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .wt-scrub { -webkit-appearance: none; appearance: none; flex: 1; height: 6px; border-radius: 4px; cursor: pointer; background: var(--line); outline: none; }
+  .wt-scrub::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: transparent; }
+  .wt-scrub::-moz-range-track { height: 6px; border-radius: 4px; background: var(--line); }
+  .wt-scrub::-moz-range-progress { height: 6px; border-radius: 4px; background: linear-gradient(90deg, var(--sp), var(--orch)); }
+  .wt-scrub::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sp), var(--orch)); border: 2px solid #0b1220; box-shadow: 0 0 8px rgba(34,211,238,.6); cursor: pointer; }
+  .wt-scrub::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sp), var(--orch)); border: 2px solid #0b1220; box-shadow: 0 0 8px rgba(34,211,238,.6); cursor: pointer; }
+  .wt-scrub:focus-visible { box-shadow: 0 0 0 3px rgba(139,92,246,.4); }
+  .wt-pos { font: 800 11px/1 var(--sans); letter-spacing: .4px; text-transform: uppercase; color: var(--text-faint); white-space: nowrap; min-width: 78px; text-align: right; }
+  /* transport row */
+  .wt-foot { display: flex; align-items: center; gap: 8px; }
+  .wt-foot .b { appearance: none; cursor: pointer; font: 700 12.5px/1 var(--sans); border: 1px solid var(--line); background: var(--panel);
     color: var(--text); padding: 9px 15px; border-radius: 9px; transition: .15s; display: inline-flex; align-items: center; gap: 7px; }
-  .wt-nav .b:hover:not(:disabled) { border-color: #33486c; }
-  .wt-nav .b:disabled { opacity: .4; cursor: default; }
-  .wt-nav .b.next { background: linear-gradient(135deg, var(--sp), var(--orch)); border-color: transparent; color: #fff; }
-  .wt-auto { font-size: 11.5px; color: var(--text-faint); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-  .wt-auto input { accent-color: var(--orch); }
+  .wt-foot .b:hover:not(:disabled) { border-color: #33486c; }
+  .wt-foot .b:disabled { opacity: .4; cursor: default; }
+  .wt-foot .b:focus-visible { outline: none; border-color: var(--orch); box-shadow: 0 0 0 3px rgba(34,211,238,.3); }
+  .wt-foot .b.ico { padding: 9px 12px; font-size: 14px; line-height: 1; }
+  .wt-foot .b.play { background: linear-gradient(135deg, var(--render), var(--orch)); border-color: transparent; color: #06121a; font-weight: 800; min-width: 92px; justify-content: center; }
+  .wt-foot .b.play.playing { background: linear-gradient(135deg, var(--orch), var(--sp)); color: #fff; }
+  .wt-foot .b.next { margin-left: auto; background: linear-gradient(135deg, var(--sp), var(--orch)); border-color: transparent; color: #fff; }
 
   .foot { margin: 30px 0 60px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--text-faint);
     font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -1053,13 +1067,17 @@
       <button class="x" id="wt-close" aria-label="Close walkthrough">×</button>
     </div>
     <p class="wt-narr" id="wt-narr"></p>
+    <div class="wt-prog" id="wt-prog"></div>
+    <div class="wt-scrubrow">
+      <input type="range" class="wt-scrub" id="wt-scrub" min="0" max="7" step="1" value="0"
+             aria-label="Walkthrough step" title="Drag to jump to any step">
+      <span class="wt-pos" id="wt-pos" aria-live="polite">Step 1 of 8</span>
+    </div>
     <div class="wt-foot">
-      <div class="wt-prog" id="wt-prog"></div>
-      <label class="wt-auto"><input type="checkbox" id="wt-autoplay" checked> auto</label>
-      <div class="wt-nav">
-        <button class="b" id="wt-prev" disabled>‹ Back</button>
-        <button class="b next" id="wt-next">Next ›</button>
-      </div>
+      <button class="b ico" id="wt-restart" aria-label="Start from the beginning" title="Start from the beginning">⏮</button>
+      <button class="b" id="wt-prev" disabled>‹ Back</button>
+      <button class="b play" id="wt-play" aria-pressed="false" aria-label="Play the tour" title="Play — auto-advances as each voiceover finishes">▶&nbsp;<span id="wt-play-label">Play</span></button>
+      <button class="b next" id="wt-next">Next ›</button>
     </div>
   </div>
 </div>
@@ -1819,52 +1837,128 @@ var WT = [
     narr:"The payoff: a <b>pull request</b> opens automatically, with a <b>green button to the live Render preview</b>. This was proven on five real requests — #5368 went all the way to a real shipped PR, with the canvas live in Superplane Cloud. That's the factory." }
 ];
 var wt = $("#wt"), wtStep = $("#wt-step"), wtTitle = $("#wt-title"), wtNarr = $("#wt-narr"),
-    wtProg = $("#wt-prog"), wtPrev = $("#wt-prev"), wtNext = $("#wt-next"), wtClose = $("#wt-close"), wtAuto = $("#wt-autoplay");
-var wtIdx = 0, wtTimer = null, wtOpen = false;
+    wtProg = $("#wt-prog"), wtPrev = $("#wt-prev"), wtNext = $("#wt-next"), wtClose = $("#wt-close"),
+    wtScrub = $("#wt-scrub"), wtPos = $("#wt-pos"), wtPlay = $("#wt-play"), wtPlayLabel = $("#wt-play-label"),
+    wtRestart = $("#wt-restart");
+var wtIdx = 0, wtOpen = false;
 
+/* --- player state ---------------------------------------------------------
+   The walkthrough is a user-controlled player. There is NO fast fixed timer.
+   When "playing", we hold on each step until its voiceover's `ended` event
+   fires (or, if muted / clip-less, a comfortable fixed dwell), then advance.
+   `wtGen` is a generation counter: any pending advance (audio `ended` or the
+   dwell timeout) checks its captured generation against the live one and
+   no-ops if a newer step change has superseded it — so steps can never
+   double-advance, even with overlapping listeners.                          */
+var wtPlaying = false, wtGen = 0, wtDwellTimer = null, wtEndedClip = null, wtEndedFn = null;
+var WT_DWELL_MS = 7000;               // muted / no-clip pace; deliberately calm
+
+wtScrub.max = String(WT.length - 1);
 (function(){ for(var i=0;i<WT.length;i++){ wtProg.appendChild(hel("i")); } })();
 
-function wtRender(){
-  var s = WT[wtIdx];
-  playClip(s.clip);                    // narrate this step (flows across the whole tour)
-  wtStep.textContent = "Step "+(wtIdx+1)+" / "+WT.length;
-  wtTitle.textContent = s.title;
-  wtNarr.innerHTML = s.narr;
+/* tear down whatever advance was scheduled for the current step */
+function wtClearAdvance(){
+  wtGen++;                            // invalidate any in-flight advance
+  if(wtDwellTimer){ clearTimeout(wtDwellTimer); wtDwellTimer = null; }
+  if(wtEndedClip && wtEndedFn){ try { wtEndedClip.removeEventListener("ended", wtEndedFn); } catch(e){} }
+  wtEndedClip = null; wtEndedFn = null;
+}
+
+/* keep slider + "Step N of M" label + progress dots in sync with wtIdx */
+function wtSync(){
+  if(wtStep) wtStep.textContent = "Step "+(wtIdx+1)+" / "+WT.length;
+  wtScrub.value = String(wtIdx);
+  wtPos.textContent = "Step "+(wtIdx+1)+" of "+WT.length;
   $$("#wt-prog i").forEach(function(b, i){ b.classList.toggle("done", i<wtIdx); b.classList.toggle("cur", i===wtIdx); });
   wtPrev.disabled = wtIdx===0;
   wtNext.textContent = wtIdx===WT.length-1 ? "Finish ✓" : "Next ›";
+}
+
+/* render the current step + (re)start its narration. Every step change —
+   seek, Next, Back, Restart, paced auto-advance — routes through here. */
+function wtRender(){
+  var s = WT[wtIdx];
+  playClip(s.clip);                    // narrate this step (flows across the whole tour)
+  wtTitle.textContent = s.title;
+  wtNarr.innerHTML = s.narr;
+  wtSync();
   showPage(s.page);
   if(s.sec){ setTimeout(function(){ var sec = document.getElementById(s.sec); if(sec) sec.scrollIntoView({ behavior:"smooth" }); }, 420); }
   if(s.page==="pipeline"){
     if(s.focus){ setTimeout(function(){ selectStation(s.focus); }, 480); } else { clearSelect(); }
     setTimeout(function(){ if(wtOpen) runLine(null); }, 760);
   } else { clearSelect(); }
+  if(wtPlaying) wtScheduleAdvance();    // pace the next hop to the narration
 }
-function wtScheduleAuto(){
-  if(wtTimer){ clearTimeout(wtTimer); wtTimer = null; }
-  if(wtAuto.checked && wtOpen){
-    wtTimer = setTimeout(function(){
-      if(wtIdx < WT.length-1){ wtIdx++; wtRender(); wtScheduleAuto(); }
-    }, 8500);
+
+/* while playing: advance after the current clip's `ended` (or a dwell). */
+function wtScheduleAdvance(){
+  wtClearAdvance();
+  if(!wtPlaying || !wtOpen) return;
+  if(wtIdx >= WT.length-1) return;      // last step: nothing to schedule
+  var gen = wtGen;
+  var advance = function(){ if(gen===wtGen && wtPlaying && wtOpen){ wtGo(wtIdx+1); } };
+  var clip = _clip;                     // the Audio playClip() just created for this step
+  if(!AUDIO_MUTED && clip && clip.src){
+    wtEndedClip = clip; wtEndedFn = function(){ advance(); };
+    clip.addEventListener("ended", wtEndedFn);
+  } else {
+    wtDwellTimer = setTimeout(advance, WT_DWELL_MS);  // muted / no clip → calm dwell
   }
 }
-function wtShow(){ wtOpen = true; wt.classList.add("show"); wtIdx = 0; wtRender(); wtScheduleAuto(); }
-function wtHide(){ wtOpen = false; wt.classList.remove("show"); stopClip(); if(wtTimer){ clearTimeout(wtTimer); wtTimer=null; } }
-wtNext.addEventListener("click", function(){ if(wtIdx < WT.length-1){ wtIdx++; wtRender(); wtScheduleAuto(); } else { wtHide(); } });
-wtPrev.addEventListener("click", function(){ if(wtIdx>0){ wtIdx--; wtRender(); wtScheduleAuto(); } });
+
+/* go to a step index (clamped). Single funnel for all navigation. */
+function wtGo(i){
+  i = Math.max(0, Math.min(WT.length-1, i|0));
+  wtClearAdvance();
+  wtIdx = i;
+  wtRender();
+  if(wtPlaying && wtIdx===WT.length-1) wtSetPlaying(false);  // reached the end → stop
+}
+
+function wtSetPlaying(on){
+  wtPlaying = !!on;
+  wtPlay.classList.toggle("playing", wtPlaying);
+  wtPlay.setAttribute("aria-pressed", wtPlaying ? "true" : "false");
+  wtPlay.setAttribute("aria-label", wtPlaying ? "Pause the tour" : "Play the tour");
+  wtPlay.firstChild.nodeValue = wtPlaying ? "❚❚ " : "▶ ";
+  wtPlayLabel.textContent = wtPlaying ? "Pause" : "Play";
+  if(wtPlaying){
+    if(wtIdx >= WT.length-1) wtIdx = 0;        // play from a finished tour restarts it
+    wtRender();                                 // (re)plays current clip, schedules advance
+  } else {
+    wtClearAdvance();
+    if(_clip){ try { _clip.pause(); } catch(e){} }  // pause narration, keep position
+  }
+}
+function wtTogglePlay(){ wtSetPlaying(!wtPlaying); }
+
+function wtShow(){ wtOpen = true; wt.classList.add("show"); wtSetPlaying(false); wtGo(0); }
+function wtHide(){ wtOpen = false; wtSetPlaying(false); wt.classList.remove("show"); wtClearAdvance(); stopClip(); }
+
+wtPlay.addEventListener("click", wtTogglePlay);
+wtRestart.addEventListener("click", function(){ wtSetPlaying(false); wtGo(0); });
+wtNext.addEventListener("click", function(){ if(wtIdx < WT.length-1){ wtGo(wtIdx+1); } else { wtHide(); } });
+wtPrev.addEventListener("click", function(){ if(wtIdx>0){ wtGo(wtIdx-1); } });
+wtScrub.addEventListener("input", function(){ wtGo(parseInt(wtScrub.value,10)||0); });
 wtClose.addEventListener("click", wtHide);
-wtAuto.addEventListener("change", wtScheduleAuto);
 $("#play-btn").addEventListener("click", wtShow);
 $("#hero-play").addEventListener("click", wtShow);
 
-/* mute toggle — reflects persisted state on load, flips + persists on click */
+/* mute toggle — reflects persisted state on load, flips + persists on click.
+   If we're mid-Play, re-render the current step so the pacing source matches
+   the new mute state: muted → fixed dwell, unmuted → a fresh clip + `ended`. */
 syncMuteBtn();
-$("#mute-btn").addEventListener("click", toggleMute);
+$("#mute-btn").addEventListener("click", function(){ toggleMute(); if(wtPlaying && wtOpen) wtRender(); });
 
 document.addEventListener("keydown", function(e){
   if(!wtOpen) return;
   if(e.key==="ArrowRight"){ wtNext.click(); }
   else if(e.key==="ArrowLeft"){ wtPrev.click(); }
+  else if(e.key===" " || e.key==="Spacebar"){
+    if(e.target && /^(INPUT|BUTTON|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;  // don't hijack controls
+    e.preventDefault(); wtTogglePlay();
+  }
   else if(e.key==="Escape"){ wtHide(); }
 });
 </script>
