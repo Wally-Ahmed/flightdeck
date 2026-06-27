@@ -1,0 +1,369 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "context_minimization_pattern",
+        "label": "Context Minimization Pattern (Graphify + MemPalace + Targeted Reads)",
+        "nodes": [
+          "claude_md_token_usage_rules",
+          "claude_md_graphify_usage",
+          "claude_md_mempalace_usage",
+          "claude_md_project_rule"
+        ],
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "CLAUDE.md"
+      },
+      {
+        "id": "persona_calibration_principles",
+        "label": "Agent Persona & Calibration Principles",
+        "nodes": [
+          "claude_md_voice_character",
+          "claude_md_intellectual_honesty",
+          "claude_md_epistemic_calibration",
+          "claude_md_even_handedness"
+        ],
+        "relation": "form",
+        "confidence": "INFERRED",
+        "confidence_score": 0.75,
+        "source_file": "CLAUDE.md"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "Voice & Character Guidelines",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Voice & character",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_voice_character",
+      "community": 4,
+      "norm_label": "voice & character guidelines"
+    },
+    {
+      "label": "Intellectual Honesty",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Intellectual honesty",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_intellectual_honesty",
+      "community": 1,
+      "norm_label": "intellectual honesty"
+    },
+    {
+      "label": "Epistemic Calibration",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Epistemic calibration",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_epistemic_calibration",
+      "community": 1,
+      "norm_label": "epistemic calibration"
+    },
+    {
+      "label": "Even-Handedness",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Even-handedness",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_even_handedness",
+      "community": 1,
+      "norm_label": "even-handedness"
+    },
+    {
+      "label": "Subagents & Workflows Delegation",
+      "file_type": "concept",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Subagents & workflows",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_subagents_workflows",
+      "community": 2,
+      "norm_label": "subagents & workflows delegation"
+    },
+    {
+      "label": "Token Usage Rules",
+      "file_type": "concept",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Token Usage Rules",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_token_usage_rules",
+      "community": 2,
+      "norm_label": "token usage rules"
+    },
+    {
+      "label": "Graphify Usage",
+      "file_type": "concept",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Graphify Usage",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_graphify_usage",
+      "community": 0,
+      "norm_label": "graphify usage"
+    },
+    {
+      "label": "MemPalace Usage",
+      "file_type": "concept",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7MemPalace Usage",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_mempalace_usage",
+      "community": 0,
+      "norm_label": "mempalace usage"
+    },
+    {
+      "label": "Revive MemPalace After Compact",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Revive MemPalace after every compact",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_revive_mempalace",
+      "community": 3,
+      "norm_label": "revive mempalace after compact"
+    },
+    {
+      "label": "Working Style (Implementation & Design)",
+      "file_type": "concept",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Working Style",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_working_style",
+      "community": 0,
+      "norm_label": "working style (implementation & design)"
+    },
+    {
+      "label": "Project Rule (Low-Token High-Signal)",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Project Rule",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_project_rule",
+      "community": 2,
+      "norm_label": "project rule (low-token high-signal)"
+    },
+    {
+      "label": "graphify-out/GRAPH_REPORT.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Graphify Usage",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_graph_report",
+      "community": 0,
+      "norm_label": "graphify-out/graph_report.md"
+    },
+    {
+      "label": "mempalace.yaml Config",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Revive MemPalace after every compact",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "claude_md_mempalace_yaml",
+      "community": 3,
+      "norm_label": "mempalace.yaml config"
+    }
+  ],
+  "links": [
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Epistemic calibration / \u00a7Intellectual honesty",
+      "weight": 1.0,
+      "source": "claude_md_epistemic_calibration",
+      "target": "claude_md_intellectual_honesty"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Intellectual honesty / \u00a7Even-handedness",
+      "weight": 1.0,
+      "source": "claude_md_intellectual_honesty",
+      "target": "claude_md_even_handedness"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Project Rule / \u00a7Subagents & workflows",
+      "weight": 1.0,
+      "source": "claude_md_project_rule",
+      "target": "claude_md_subagents_workflows"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Subagents & workflows / \u00a7Token Usage Rules",
+      "weight": 1.0,
+      "source": "claude_md_token_usage_rules",
+      "target": "claude_md_subagents_workflows"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Project Rule",
+      "weight": 1.0,
+      "source": "claude_md_project_rule",
+      "target": "claude_md_token_usage_rules"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Token Usage Rules step 1",
+      "weight": 1.0,
+      "source": "claude_md_token_usage_rules",
+      "target": "claude_md_graphify_usage"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Token Usage Rules step 2",
+      "weight": 1.0,
+      "source": "claude_md_token_usage_rules",
+      "target": "claude_md_mempalace_usage"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Graphify Usage",
+      "weight": 1.0,
+      "source": "claude_md_graphify_usage",
+      "target": "claude_md_graph_report"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Graphify Usage / \u00a7MemPalace Usage",
+      "weight": 1.0,
+      "source": "claude_md_graphify_usage",
+      "target": "claude_md_mempalace_usage"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Working Style design task step 1",
+      "weight": 1.0,
+      "source": "claude_md_working_style",
+      "target": "claude_md_graphify_usage"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Revive MemPalace after every compact",
+      "weight": 1.0,
+      "source": "claude_md_revive_mempalace",
+      "target": "claude_md_mempalace_usage"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Working Style design task step 2",
+      "weight": 1.0,
+      "source": "claude_md_working_style",
+      "target": "claude_md_mempalace_usage"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "\u00a7Revive MemPalace after every compact",
+      "weight": 1.0,
+      "source": "claude_md_revive_mempalace",
+      "target": "claude_md_mempalace_yaml"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "context_minimization_pattern",
+      "label": "Context Minimization Pattern (Graphify + MemPalace + Targeted Reads)",
+      "nodes": [
+        "claude_md_token_usage_rules",
+        "claude_md_graphify_usage",
+        "claude_md_mempalace_usage",
+        "claude_md_project_rule"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "CLAUDE.md"
+    },
+    {
+      "id": "persona_calibration_principles",
+      "label": "Agent Persona & Calibration Principles",
+      "nodes": [
+        "claude_md_voice_character",
+        "claude_md_intellectual_honesty",
+        "claude_md_epistemic_calibration",
+        "claude_md_even_handedness"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "CLAUDE.md"
+    }
+  ]
+}
